@@ -9,12 +9,12 @@ import matplotlib.pyplot as plt
 from grid_world_1 import Environment
 
 env = Environment()
-GOAL_REWARD = 0.1
+GOAL_REWARD = 1
 GOAL_PENALTY = 0
 GAMMA = 0.8  # Discount rate
 
 
-def get_reward(state, F, goal_reward=GOAL_REWARD):
+def get_reward(state, F=env.auto_goals, goal_reward=GOAL_REWARD):
     (st, q) = state
     if q in F:
         return goal_reward
@@ -296,20 +296,23 @@ def extract_opt_theta(opt_values, F, tau=0.01):
 
 
 def main():
-    ex_num = 1
+    ex_num = 5
     # Define hyperparameters
-    iter_num = 200  # iteration number of gradient ascent
-    M = 100  # number of sampled trajectories
+    iter_num = 300  # iteration number of gradient ascent
+    M = 40  # number of sampled trajectories
     T = 10  # length of a trajectory
     eta = 1  # step size for theta
     kappa = 0.2  # constant step size for lambda
-    F = [1]  # Define the goal automaton state
-    alpha = 0.1  # value constraint
+    F = env.auto_goals  # Define the goal automaton state
+    alpha = 0.2  # value constraint
     # Initialize the parameters
-    theta = np.random.random([env.state_size, env.action_size])
+    # theta = np.random.random([env.state_size, env.action_size])
     # opt_values = value_iterations(1e-3, F)
     # theta = extract_opt_theta(opt_values, F)  # optimal theta initialization.
-    lam = np.random.uniform(1, 10)
+    with open(f'./grid_world_1_data/Values/theta_4', "rb") as pkl_wb_obj:
+        theta = np.load(pkl_wb_obj)
+    # lam = np.random.uniform(1, 5)
+    lam = 0.016386059210541953  # The end of 4th experiments
     # Create empty lists
     entropy_list = []
     value_list = []
@@ -336,6 +339,8 @@ def main():
         print("The lambda is", lam)
         # kappa = 1 / (i + 1) # changed step size
         lam = lam - kappa * (approx_value - alpha)
+        if lam < 0:
+            lam = 0  # projection
         ###############################################
         end = time.time()
         print("One iteration done. It takes", end - start, "s")
@@ -355,7 +360,7 @@ def main():
     plt.xlabel("The iteration number")
     plt.ylabel("entropy and value")
     plt.legend()
-    plt.savefig(f'./grid_world_1_data/Graphs/Ex_{ex_num}.png')
+    plt.savefig(f'./grid_world_1_data/Graphs/Ex_{ex_num}_continue_4.png')
     plt.show()
 
 

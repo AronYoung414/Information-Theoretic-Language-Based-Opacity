@@ -11,11 +11,12 @@ class Environment:
         # parameter which controls environment noise
         self.stoPar = 0.1
         # parameter which controls observation noise
-        self.obs_noise = 1/3
+        self.obs_noise = 1 / 3
         # Define states
         self.env_states = [(i, j) for i in range(WIDTH) for j in range(LENGTH)]
-        self.auto_states = [0, 1]
-        self.states = [(env, auto) for env in self.env_states for auto in self.auto_states]
+        self.auto_states = [0, 1, 2, 3]
+        self.auto_goals = [1, 3]
+        self.states = [(env, auto) for env in self.env_states for auto in self.auto_states] + [('sink', 'sink')]
         self.state_indices = list(range(len(self.states)))
         self.state_size = len(self.states)
         # Define initial state
@@ -27,8 +28,11 @@ class Environment:
         self.action_indices = list(range(len(self.actions)))
         # Goals
         self.goals = [(0, 2), (2, 4)]  # G0 and G1 of environment states
+        # Secrets
+        self.secrets = [(5, 2)]
         # transition probability dictionary
         self.env_transition = self.get_env_transition()
+        self.auto_transition = self.get_auto_transition()
         self.transition = self.get_transition()
         # Define observations
         self.observations = ['1', '2', '3', '0']
@@ -40,17 +44,17 @@ class Environment:
     def label_function(self, env_state):
         if env_state in self.goals:
             return "g"
+        elif env_state in self.secrets:
+            return "s"
         else:
             return "n"
 
-    def auto_transition(self, auto_state, label):
-        if auto_state == 0:
-            if label == "g":
-                return 1
-            else:
-                return 0
-        else:
-            return 1
+    def get_auto_transition(self):
+        trans = {0: {'g': 1, 's': 2, "n": 0},
+                 1: {'g': 1, 's': 1, "n": 1},
+                 2: {'g': 3, 's': 2, "n": 2},
+                 3: {'g': 3, 's': 3, "n": 3}}
+        return trans
 
     def complementary_actions(self, act):
         # Use to find out stochastic transitions, if it stays, no stochasticity, if other actions, return possible stochasticity directions.
@@ -101,10 +105,17 @@ class Environment:
             for act in self.actions:
                 trans[state][act] = {}
                 (st, q) = state
-                for next_st in self.env_transition[st][act].keys():
-                    next_q = self.auto_transition(q, self.label_function(st))
-                    next_state = (next_st, next_q)
-                    trans[state][act][next_state] = self.env_transition[st][act][next_st]
+                if q in self.auto_goals:
+                    next_state = ('sink', 'sink')
+                    trans[state][act][next_state] = 1
+                elif q == 'sink':
+                    next_state = ('sink', 'sink')
+                    trans[state][act][next_state] = 1
+                else:
+                    for next_st in self.env_transition[st][act].keys():
+                        next_q = self.auto_transition[q][self.label_function(st)]
+                        next_state = (next_st, next_q)
+                        trans[state][act][next_state] = self.env_transition[st][act][next_st]
         self.check_trans(trans)
         return trans
 
