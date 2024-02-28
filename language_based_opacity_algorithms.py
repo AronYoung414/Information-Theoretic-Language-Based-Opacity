@@ -296,7 +296,7 @@ def extract_opt_theta(opt_values, F, tau=0.01):
 
 
 def main():
-    ex_num = 5
+    ex_num = 6
     # Define hyperparameters
     iter_num = 300  # iteration number of gradient ascent
     M = 40  # number of sampled trajectories
@@ -306,13 +306,13 @@ def main():
     F = env.auto_goals  # Define the goal automaton state
     alpha = 0.2  # value constraint
     # Initialize the parameters
-    # theta = np.random.random([env.state_size, env.action_size])
+    theta = np.random.random([env.state_size, env.action_size])
     # opt_values = value_iterations(1e-3, F)
     # theta = extract_opt_theta(opt_values, F)  # optimal theta initialization.
-    with open(f'./grid_world_1_data/Values/theta_4', "rb") as pkl_wb_obj:
-        theta = np.load(pkl_wb_obj)
-    # lam = np.random.uniform(1, 5)
-    lam = 0.016386059210541953  # The end of 4th experiments
+    # with open(f'./grid_world_1_data/Values/theta_4', "rb") as pkl_wb_obj:
+    #     theta = np.load(pkl_wb_obj)
+    lam = np.random.uniform(1, 5)
+    # lam = 0.016386059210541953  # The end of 4th experiments
     # Create empty lists
     entropy_list = []
     value_list = []
@@ -360,7 +360,7 @@ def main():
     plt.xlabel("The iteration number")
     plt.ylabel("entropy and value")
     plt.legend()
-    plt.savefig(f'./grid_world_1_data/Graphs/Ex_{ex_num}_continue_4.png')
+    plt.savefig(f'./grid_world_1_data/Graphs/Ex_{ex_num}.png')
     plt.show()
 
 
