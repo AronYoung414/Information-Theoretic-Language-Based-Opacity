@@ -317,7 +317,7 @@ def main():
     T = 5  # length of a trajectory
     eta = 1  # step size for theta
     kappa = 0.2  # constant step size for lambda
-    F = env.goals  # Define the goal automaton state
+    F = env.goals  # Define the goal state
     alpha = 0.2  # value constraint
     # Initialize the parameters
     theta = np.random.random([env.state_size, env.action_size])
