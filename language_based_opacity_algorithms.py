@@ -6,20 +6,12 @@ from concurrent.futures import ProcessPoolExecutor
 from itertools import repeat
 import matplotlib.pyplot as plt
 
-from grid_world_1 import Environment
+from simple_graph_2 import Environment
 
 env = Environment()
 GOAL_REWARD = 1
 GOAL_PENALTY = 0
 GAMMA = 0.8  # Discount rate
-
-
-def get_reward(state, F=env.auto_goals, goal_reward=GOAL_REWARD):
-    (st, q) = state
-    if q in F:
-        return goal_reward
-    else:
-        return 0
 
 
 def pi_theta(state, act, theta):
@@ -192,11 +184,33 @@ def initial_value_approx(s_data, F, gamma=1):
         for t in range(s_data.shape[1]):
             s = s_data[i, t]
             state = env.states[s]
-            total_return += gamma ** t * get_reward(state, F)
+            total_return += gamma ** t * env.get_reward(state)
 
         value_function += total_return
     value_function = value_function / s_data.shape[0]
     return value_function
+
+
+def initial_value_DP(theta, threshold, gamma=GAMMA):
+    s0 = env.states.index(env.initial_state)
+    values = np.zeros(env.state_size)
+    values_old = np.copy(values)
+    Delta = threshold + 0.1
+    while Delta > threshold:
+        for s in range(env.state_size):
+            state = env.states[s]
+            v_n = 0
+            for a in range(env.action_size):
+                act = env.actions[a]
+                s_prime_dict = env.transition[state][act]
+                for state_prime in s_prime_dict.keys():
+                    s_prime = env.states.index(state_prime)
+                    s_prime_prob = env.transition[state][act][state_prime]
+                    v_n += s_prime_prob * pi_theta(state, act, theta) * (env.get_reward(state) + gamma * values[s_prime])
+            values[s] = v_n
+        Delta = np.max(values - values_old)
+        values_old = np.copy(values)
+    return values[s0]
 
 
 def nabla_value_function(theta, s_data, a_data, F, gamma=1):
@@ -210,7 +224,7 @@ def nabla_value_function(theta, s_data, a_data, F, gamma=1):
             state = env.states[s]
             act = env.actions[a]
             log_P_x_i_gradient += log_policy_gradient(state, act, theta)
-            total_return += gamma ** t * get_reward(state, F)
+            total_return += gamma ** t * env.get_reward(state)
 
         value_function_gradient += total_return * log_P_x_i_gradient
     value_function_gradient = value_function_gradient / s_data.shape[0]
@@ -263,7 +277,7 @@ def value_iterations(threshold, F, gamma=GAMMA):
                 for state_p in state_p_dict.keys():
                     s_p_prob = state_p_dict[state_p]
                     s_p = env.states.index(state_p)
-                    temp_v += s_p_prob * (get_reward(state, F) + gamma * values[s_p])
+                    temp_v += s_p_prob * (env.get_reward(state) + gamma * values[s_p])
                 if temp_v > v_n:
                     v_n = temp_v
             s = env.states.index(state)
@@ -282,7 +296,7 @@ def optimal_policy(opt_values, F, tau=0.01, gamma=GAMMA):
             for state_p in state_p_dict.keys():
                 s_prime_prob = state_p_dict[state_p]
                 s_p = env.states.index(state_p)
-                next_v += s_prime_prob * (get_reward(state, F) + gamma * opt_values[s_p])
+                next_v += s_prime_prob * (env.get_reward(state) + gamma * opt_values[s_p])
             s = env.states.index(state)
             a = env.actions.index(act)
             pi_star[s, a] = np.exp(next_v / tau) / np.exp(opt_values[s] / tau)
@@ -296,28 +310,30 @@ def extract_opt_theta(opt_values, F, tau=0.01):
 
 
 def main():
-    ex_num = 6
+    ex_num = 2
     # Define hyperparameters
-    iter_num = 300  # iteration number of gradient ascent
-    M = 40  # number of sampled trajectories
-    T = 10  # length of a trajectory
+    iter_num = 1000  # iteration number of gradient ascent
+    M = 2000  # number of sampled trajectories
+    T = 5  # length of a trajectory
     eta = 1  # step size for theta
     kappa = 0.2  # constant step size for lambda
-    F = env.auto_goals  # Define the goal automaton state
+    F = env.goals  # Define the goal automaton state
     alpha = 0.2  # value constraint
     # Initialize the parameters
     theta = np.random.random([env.state_size, env.action_size])
     # opt_values = value_iterations(1e-3, F)
     # theta = extract_opt_theta(opt_values, F)  # optimal theta initialization.
-    # with open(f'./grid_world_1_data/Values/theta_4', "rb") as pkl_wb_obj:
+    # with open(f'./simple_graph_data/Values/theta_1', "rb") as pkl_wb_obj:
     #     theta = np.load(pkl_wb_obj)
-    lam = np.random.uniform(1, 5)
-    # lam = 0.016386059210541953  # The end of 4th experiments
+    # lam = np.random.uniform(0, 1)
+    lam = 0  # The end of 4th experiments
     # Create empty lists
     entropy_list = []
     value_list = []
+    theta_list = []
     # Sample trajectories (observations)
     for i in range(iter_num):
+        theta_list.append(theta)
         start = time.time()
         ##############################################
         s_data, a_data, y_data = sample_data(M, T, theta)
@@ -332,6 +348,7 @@ def main():
         # print("The gradient of value function is", grad_V)
         grad_L = grad_H + lam * grad_V
         approx_value = initial_value_approx(s_data, F)
+        # approx_value = initial_value_DP(theta, 0.01)
         value_list.append(approx_value)
         print("The estimated value is", approx_value)
         # SGD updates
@@ -345,14 +362,17 @@ def main():
         end = time.time()
         print("One iteration done. It takes", end - start, "s")
 
-    with open(f'./grid_world_1_data/Values/theta_{ex_num}', 'wb') as f:
+    with open(f'./simple_graph_2_data/Values/theta_{ex_num}', 'wb') as f:
         np.save(f, theta)
 
-    with open(f'./grid_world_1_data/Values/entropy_{ex_num}', "wb") as pkl_wb_obj:
+    with open(f'./simple_graph_2_data/Values/entropy_{ex_num}', "wb") as pkl_wb_obj:
         pickle.dump(entropy_list, pkl_wb_obj)
 
-    with open(f'./grid_world_1_data/Values/value_{ex_num}', "wb") as pkl_wb_obj:
+    with open(f'./simple_graph_2_data/Values/value_{ex_num}', "wb") as pkl_wb_obj:
         pickle.dump(value_list, pkl_wb_obj)
+
+    with open(f'./simple_graph_2_data/Values/theta_list_{ex_num}', "wb") as pkl_wb_obj:
+        pickle.dump(theta_list, pkl_wb_obj)
 
     iteration_list = range(iter_num)
     plt.plot(iteration_list, entropy_list, label='entropy')
@@ -360,7 +380,7 @@ def main():
     plt.xlabel("The iteration number")
     plt.ylabel("entropy and value")
     plt.legend()
-    plt.savefig(f'./grid_world_1_data/Graphs/Ex_{ex_num}.png')
+    plt.savefig(f'./simple_graph_2_data/Graphs/Ex_{ex_num}.png')
     plt.show()
 
 

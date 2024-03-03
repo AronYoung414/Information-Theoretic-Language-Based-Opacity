@@ -144,7 +144,7 @@ class Environment:
         elif st in self.sensors[2]:
             return ['3', '0']
         else:
-            return ['0']
+            return ['s']  # sink state
 
     def observation_function_sampler(self, state):
         observation_set = self.observation_function(state)
