@@ -177,7 +177,7 @@ def entropy_a_grad_multi(T, y_data, theta):
     return H, nabla_H
 
 
-def initial_value_approx(s_data, F, gamma=1):
+def initial_value_approx(s_data, gamma=1):
     value_function = 0
     for i in range(s_data.shape[0]):
         total_return = 0
@@ -213,7 +213,7 @@ def initial_value_DP(theta, threshold, gamma=GAMMA):
     return values[s0]
 
 
-def nabla_value_function(theta, s_data, a_data, F, gamma=1):
+def nabla_value_function(theta, s_data, a_data, gamma=1):
     value_function_gradient = np.zeros([env.state_size, env.action_size])
     for i in range(s_data.shape[0]):
         log_P_x_i_gradient = np.zeros([env.state_size, env.action_size])
@@ -258,10 +258,9 @@ def sample_data(M, T, theta):
     return s_data, a_data, y_data
 
 
-def value_iterations(threshold, F, gamma=GAMMA):
+def value_iterations(threshold, gamma=GAMMA):
     """
     :param threshold: threshold for Bellman error
-    :param F: The goal states (Please use list)
     :param gamma: discount rate
     :return: value function
     """
@@ -287,7 +286,7 @@ def value_iterations(threshold, F, gamma=GAMMA):
     return values
 
 
-def optimal_policy(opt_values, F, tau=0.01, gamma=GAMMA):
+def optimal_policy(opt_values, tau=0.01, gamma=GAMMA):
     pi_star = np.zeros([env.state_size, env.action_size])
     for state in env.states:
         for act in env.actions:
@@ -303,8 +302,8 @@ def optimal_policy(opt_values, F, tau=0.01, gamma=GAMMA):
     return pi_star
 
 
-def extract_opt_theta(opt_values, F, tau=0.01):
-    pi_star = optimal_policy(opt_values, F, tau)
+def extract_opt_theta(opt_values, tau=0.01):
+    pi_star = optimal_policy(opt_values, tau)
     theta = np.log(pi_star)
     return theta
 
@@ -321,8 +320,8 @@ def main():
     alpha = 0.2  # value constraint
     # Initialize the parameters
     theta = np.random.random([env.state_size, env.action_size])
-    # opt_values = value_iterations(1e-3, F)
-    # theta = extract_opt_theta(opt_values, F)  # optimal theta initialization.
+    # opt_values = value_iterations(1e-3)
+    # theta = extract_opt_theta(opt_values)  # optimal theta initialization.
     # with open(f'./simple_graph_data/Values/theta_1', "rb") as pkl_wb_obj:
     #     theta = np.load(pkl_wb_obj)
     # lam = np.random.uniform(0, 1)
@@ -344,10 +343,10 @@ def main():
         print("The conditional entropy is", approx_entropy)
         entropy_list.append(approx_entropy)
         # SGD gradients
-        grad_V = nabla_value_function(theta, s_data, a_data, F)
+        grad_V = nabla_value_function(theta, s_data, a_data)
         # print("The gradient of value function is", grad_V)
         grad_L = grad_H + lam * grad_V
-        approx_value = initial_value_approx(s_data, F)
+        approx_value = initial_value_approx(s_data)
         # approx_value = initial_value_DP(theta, 0.01)
         value_list.append(approx_value)
         print("The estimated value is", approx_value)
